@@ -38,6 +38,7 @@ A production-ready, modular, and exceptionally memory-efficient Telegram Managem
 │   └── singbox.lua         # Sing-box core process network pipeline lifecycles
 └── plugins/
     └── alerts.lua          # Background threshold state monitoring worker
+```
 
 🚀 Easy Installation Guide (For Beginners)
 Welcome! You do not need to be a senior Linux engineer to set this up. Follow these simple, color-coded step-by-step instructions to get your router control panel up and running in less than 5 minutes.
@@ -54,13 +55,14 @@ Search for @userinfobot on Telegram, start it, and copy your User ID (a string o
 🟢 STEP 1: Connect to Your Router
 Open your terminal (macOS/Linux) or Command Prompt/PowerShell (Windows) and log into your router via SSH:
 
-Bash
+```Bash
 # Replace '192.168.1.1' with your router's actual IP address if different
 ssh root@192.168.1.1
+```
 🔵 STEP 2: Download and Install the Bot
 Run this sequence of commands directly in your router's terminal. Copy and paste the block below:
 
-Bash
+```Bash
 # 🟡 [COLOR: YELLOW] Navigate to the temporary shared folder
 cd /tmp
 
@@ -76,30 +78,33 @@ cd owrt-tg-bot-main
 chmod +x install.sh
 ./install.sh
 The installer will automatically run system compatibility checks, download all required hidden dependencies, and establish the system paths.
-
+```
 🟠 STEP 3: Configure Your Credentials
 Now, you must paste the Telegram values you collected in Step 0 into the configuration file:
 
-Bash
+```Bash
 # 🟡 [COLOR: YELLOW] Open the configuration file using the built-in system editor
 vi /etc/owrt-tg-bot/config.conf
+```
 Quick Editor Tip for Beginners: Press the i key on your keyboard to start typing. Use the arrow keys to navigate.
 
 Modify these specific lines within the [telegram] block:
 
-Ini, TOML
+```Ini, TOML
 [telegram]
 bot_token="YOUR_TELEGRAM_BOT_TOKEN_HERE"
 allowed_chat_ids="YOUR_TELEGRAM_USER_ID_HERE"
+```
 Once filled out, press ESC, type :wq and press Enter to save the file and exit the editor.
 
 🟢 STEP 4: Start the Service Daemon
 Your bot configuration is complete! Fire up the automated engine running in the background:
 
-Bash
+```Bash
 # 🟢 [COLOR: GREEN] Enable the boot service and start the agent
 /etc/init.d/owrt-tg-bot enable
 /etc/init.d/owrt-tg-bot start
+```
 🎉 STEP 5: Launch Your Dashboard!
 Go back to your Telegram client app.
 
@@ -112,10 +117,10 @@ Click Start or type /start.
 🛑 Complete System Removal
 If you ever want to completely clean and erase this program from your hardware system storage memory, simply log back into your router via SSH and execute:
 
-Bash
+```Bash
 chmod +x /usr/share/owrt-tg-bot/uninstall.sh
 /usr/share/owrt-tg-bot/uninstall.sh
-
+```
 ---
 
 This `README.md` file is now fully customized for beginner accessibility while retaining its technical blueprint documentation layout for developers. Let me know if you would like me to output the next file or if there are any additional features you want to bundle!
