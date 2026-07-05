@@ -266,4 +266,23 @@ function M.handle_callback(callback)
         system.execute_shutdown()
 
     elseif data == "nav_monitor" then
-        telegram.answer_callback(query_id, "Gathering active interface
+        telegram.answer_callback(query_id, "Gathering active interface delta structures...", false)
+        local rx, tx = monitor.get_realtime_stats()
+        local text = string.format(
+            "%s\n\n" ..
+            "%s`%s/s`\n" ..
+            "%s`%s/s`",
+            lang.get("mon_title"),
+            lang.get("mon_net_rx"), helpers.format_bytes(rx),
+            lang.get("mon_net_tx"), helpers.format_bytes(tx)
+        )
+        local kb = kb_engine.create()
+        kb_engine.add_control_row(kb, "nav_main", "nav_monitor")
+        telegram.edit_message(chat_id, message_id, text, kb_engine.export(kb))
+
+    else
+        telegram.answer_callback(query_id, lang.get("unknown_action"), true)
+    end
+end
+
+return M
