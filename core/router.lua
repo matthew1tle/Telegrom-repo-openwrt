@@ -2,7 +2,7 @@
 local telegram = require("core.telegram")
 local state_machine = require("core.state")
 local kb_engine = require("keyboards.engine")
-local lang = require("lang.fa")
+local lang = require("lang.en")
 local helpers = require("core.helpers")
 local logger = require("core.logger")
 
