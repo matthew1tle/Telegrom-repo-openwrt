@@ -57,7 +57,7 @@ Connect to your router using a terminal client and run this single composite com
 
 ```Bash
 cd /tmp && \
-wget -O main.zip [https://github.com/matthew1tle/Telegrom-repo-openwrt/archive/refs/heads/main.zip](https://github.com/matthew1tle/Telegrom-repo-openwrt/archive/refs/heads/main.zip) && \
+wget -O main.zip https://github.com/matthew1tle/Telegrom-repo-openwrt/archive/refs/heads/main.zip && \
 unzip -o main.zip && \
 cd Telegrom-repo-openwrt-main && \
 chmod +x install.sh && \
