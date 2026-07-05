@@ -68,11 +68,11 @@ cd /tmp
 
 # 🟢 [COLOR: GREEN] Download the latest release of the control panel
 # (Replace the URL below with your actual repository URL once uploaded to GitHub)
-wget [https://github.com/username/owrt-tg-bot/archive/refs/heads/main.zip](https://github.com/username/owrt-tg-bot/archive/refs/heads/main.zip)
+wget [https://github.com/matthew1tle/Telegrom-repo-openwrt/archive/refs/heads/main.zip](https://github.com/username/owrt-tg-bot/archive/refs/heads/main.zip)
 
 # 🔵 [COLOR: BLUE] Extract the files and enter the setup directory
 unzip main.zip
-cd owrt-tg-bot-main
+cd Telegrom-repo-openwrt
 
 # 🟢 [COLOR: GREEN] Make the installer executable and run it
 chmod +x install.sh
