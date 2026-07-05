@@ -5,6 +5,7 @@ local telegram = require("core.telegram")
 local state_machine = require("core.state")
 local kb_engine = require("keyboards.engine")
 local lang = require("lang.en")
+local helpers = require("core.helpers")
 local logger = require("core.logger")
 
 -- Load Submodules safely
@@ -63,7 +64,6 @@ function M.handle_message(msg)
     if text == "/start" then
         send_main_menu(chat_id, nil)
     else
-        -- Absolute denial of raw typed structural updates to maintain inline control framework boundaries
         telegram.send_message(chat_id, "⚠️ Operations are exclusively managed via interactive control buttons.")
     end
 end
@@ -82,7 +82,6 @@ function M.handle_callback(callback)
 
     logger.debug(string.format("Processing callback mutation event: %s from user: %s", data, tostring(chat_id)))
 
-    -- Global Navigation Event Router Mapping Matrix
     if data == "nav_main" then
         send_main_menu(chat_id, message_id)
         telegram.answer_callback(query_id)
@@ -102,11 +101,14 @@ function M.handle_callback(callback)
         telegram.answer_callback(query_id)
 
     elseif data:match("^wifi_toggle_") then
-        local section, target_state = data:match("^wifi_toggle_(.+电%[.-%])_(%d+)")
-        if not section then section, target_state = data:match("^wifi_toggle_(.+)_(%d+)") end
-        wifi.toggle_wifi(section, target_state == "1")
-        telegram.answer_callback(query_id, "Wireless topology configuration applied.", false)
-        helpers.exec("sleep 1")
+        local section, target_state = data:match("^wifi_toggle_(.+)_(%d+)$")
+        if section then
+            wifi.toggle_wifi(section, target_state == "1")
+            telegram.answer_callback(query_id, "Wireless topology configuration applied.", false)
+            helpers.exec("sleep 1")
+        else
+            telegram.answer_callback(query_id, "Error parsing wireless parameters.", true)
+        end
         local text = wifi.get_wifi_summary()
         local kb = kb_engine.create()
         kb_engine.add_control_row(kb, "nav_main", "nav_wifi")
@@ -134,7 +136,7 @@ function M.handle_callback(callback)
         local kb = kb_engine.create()
         local active_map = clients.get_connected_clients()
         for mac, client in pairs(active_map) do
-            if client.rssi then -- Client is wireless, expose kick capability
+            if client.rssi then
                 kb_engine.add_row(kb, {
                     { text = "❌ Kick " .. client.hostname, callback_data = "client_kick_" .. mac }
                 })
