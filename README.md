@@ -2,6 +2,13 @@
 
 A production-ready, modular, and exceptionally memory-efficient Telegram Management Panel for OpenWrt (23.x and 24.x) embedded routers. Written natively in **Lua** and **BusyBox ash**, utilizing native framework interfaces (`uci`, `ubus`, `apk`/`opkg`, and `procd`).
 
+## Screen Shots
+<img width="492" height="929" alt="Screenshot 2026-07-05 at 21 42 18" src="https://github.com/user-attachments/assets/3b3e09f7-28d4-4d70-b5ea-aed3a05cbaf6" />
+<img width="492" height="929" alt="Screenshot 2026-07-05 at 21 41 53" src="https://github.com/user-attachments/assets/a8c1f983-a06b-4d1a-8640-aff20ce6c5ea" />
+<img width="492" height="929" alt="Screenshot 2026-07-05 at 21 45 55" src="https://github.com/user-attachments/assets/28e5151f-8823-418e-9f7d-c6ccb95c46ab" />
+<img width="492" height="929" alt="Screenshot 2026-07-05 at 21 42 39" src="https://github.com/user-attachments/assets/95beebb7-60be-4f30-b7b5-9ce197a0d0b7" />
+
+
 ## Key Design Principles
 * **Zero Engine Bloat:** Completely free of heavy scripting abstraction layers (No Python, No Node.js, No PHP). Runs inside the default system Lua runtime environment.
 * **Pure Inline UI:** 100% controlled using interactive inline keyboard matrix selectors. Text command routing boundaries block all typing inputs outside of the fallback `/start` bootloader sequence.
