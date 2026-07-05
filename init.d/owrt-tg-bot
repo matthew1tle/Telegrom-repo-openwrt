@@ -1,0 +1,96 @@
+#!/bin/sh /etc/rc.common
+# OpenWrt Telegram Bot Panel - Procd Daemon Script
+# Paths matched with installation schema
+
+START=99
+STOP=10
+
+USE_PROCD=1
+
+BASE_DIR="/usr/share/owrt-tg-bot"
+CONF_FILE="/etc/owrt-tg-bot/config.conf"
+LOG_FILE="/var/log/owrt-tg-bot.log"
+STATE_DIR="/var/run/owrt-tg-bot"
+
+# Read single values directly via raw parsing from config file to keep it generic and independent of UCI
+get_conf_value() {
+    local section="$1"
+    local key="$2"
+    local inside_section=0
+
+    if [ ! -f "$CONF_FILE" ]; then
+        return
+    fi
+
+    while IFS= read -r line; do
+        # Trim whitespace
+        line=$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        
+        # Skip comments or empty lines
+        case "$line" in
+            # Comment line
+            "#"*|";"*) continue ;;
+            # Section header
+            "["*"]")
+                local current_section=$(echo "$line" | tr -d '[]')
+                if [ "$current_section" = "$section" ]; then
+                    inside_section=1
+                else
+                    inside_section=0
+                fi
+                continue
+                ;;
+        esac
+
+        if [ "$inside_section" -eq 1 ]; then
+            case "$line" in
+                *"="*)
+                    local k=$(echo "$line" | cut -d'=' -f1 | sed 's/[[:space:]]*$//')
+                    local v=$(echo "$line" | cut -d'=' -f2- | sed -e 's/^[[:space:]]*//' -e 's/^"//' -e 's/"$//')
+                    if [ "$k" = "$key" ]; then
+                        echo "$v"
+                        return
+                    fi
+                    ;;
+            esac
+        fi
+    done < "$CONF_FILE"
+}
+
+start_service() {
+    local token
+    token=$(get_conf_value "telegram" "bot_token")
+
+    if [ -z "$token" ]; then
+        echo "[!] Telegram Bot Panel: bot_token is empty. Service will not start." >&2
+        return 1
+    fi
+
+    # Ensure runtime engine state directories exist
+    mkdir -p "$STATE_DIR"
+    mkdir -p "$BASE_DIR/tmp"
+
+    procd_open_instance "main"
+    
+    # Execute the core bot daemon engine using system lua interpreter
+    procd_set_param command /usr/bin/lua "$BASE_DIR/core/main.lua"
+    
+    # Procd process configuration
+    procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+    procd_set_param user root
+    
+    procd_close_instance
+}
+
+stop_service() {
+    # Clean up ephemeral runtime flags and states
+    rm -rf "${STATE_DIR:?}"/* 2>/dev/null || true
+    rm -rf "${BASE_DIR:?}"/tmp/* 2>/dev/null || true
+}
+
+reload_service() {
+    stop
+    start
+}
