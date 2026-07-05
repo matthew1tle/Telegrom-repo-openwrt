@@ -81,30 +81,31 @@ function M.get_internet_summary()
 end
 
 function M.run_speedtest()
-    -- Target Cloudflare's high-speed global edge server node directly
-    local test_server = "http://speed.cloudflare.com/__down?bytes=5000000"
-    local start_time = os.clock()
+    -- Request an accurate 10 Megabyte chunk payload from Cloudflare global edge structures
+    local test_server = "http://speed.cloudflare.com/__down?bytes=10000000"
     
-    -- Request a clean 5MB chunk with strict timeouts to ensure safety
-    local cmd = string.format("curl -s -w '%%{size_download}' -o /dev/null --connect-timeout 4 --max-time 12 '%s'", test_server)
+    -- Tell curl to output both size_download AND time_total separated by a pipe character
+    local cmd = string.format("curl -s -o /dev/null --connect-timeout 4 --max-time 15 -w '%%{size_download}|%%{time_total}' '%s'", test_server)
     local raw_output = helpers.exec(cmd)
     
-    local clean_size = raw_output:match("(%d+)")
-    local size_download = clean_size and tonumber(clean_size) or 0
-    local end_time = os.clock()
+    -- Extract the data components reliably
+    local size_str, time_str = raw_output:match("([^|]+)|([^|]+)")
     
-    local elapsed = end_time - start_time
-    if size_download == 0 or elapsed <= 0 then
-        return "❌ Speed test timed out. Try optimizing your local MTU network sizes."
+    local size_download = tonumber(size_str) or 0
+    local elapsed = tonumber(time_str) or 0
+    
+    if size_download == 0 or elapsed <= 0.01 then
+        return "❌ Speed test timed out or connection dropped during transmission."
     end
 
+    -- Convert bytes/sec directly to Megabits per second
     local speed_bps = (size_download * 8) / elapsed
     local speed_mbps = speed_bps / 1000000
 
     return string.format(
         "🚀 *Speed Test Results (Cloudflare Edge):*\n" ..
         "*Downloaded:* `%s`\n" ..
-        "*Time Elapsed:* `%.2fs`\n" ..
+        "*Real Time Elapsed:* `%.2fs`\n" ..
         "*Calculated Speed:* `%.2f Mbps`",
         helpers.format_bytes(size_download), elapsed, speed_mbps
     )
