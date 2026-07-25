@@ -8,17 +8,17 @@ local M = {}
 
 function M.get_status()
     -- Check if passwall control process framework handles are active
-    local tcp_status = helpers.exec("pgrep -f passwall") ~= ""
+    local tcp_status = helpers.exec("pgrep -f passwall2") ~= ""
     local running = false
     
     -- Evaluate operational structural components through standard sysinit hooks
-    local init_check = helpers.exec("/etc/init.d/passwall status 2>/dev/null")
+    local init_check = helpers.exec("/etc/init.d/passwall2 status 2>/dev/null")
     if init_check:match("running") or tcp_status then
         running = true
     end
 
-    local mode = helpers.get_uci_val("passwall", "main", "tcp_node", "None")
-    local enabled = helpers.get_uci_val("passwall", "main", "enabled", "0") == "1"
+    local mode = helpers.get_uci_val("passwall2", "main", "tcp_node", "None")
+    local enabled = helpers.get_uci_val("passwall2", "main", "enabled", "0") == "1"
 
     return {
         enabled = enabled,
@@ -47,18 +47,18 @@ end
 
 function M.toggle(enable)
     local val = enable and "1" or "0"
-    helpers.set_uci_val("passwall", "main", "enabled", val)
+    helpers.set_uci_val("passwall2", "main", "enabled", val)
     
     if enable then
-        helpers.exec("/etc/init.d/passwall start")
+        helpers.exec("/etc/init.d/passwall2 start")
     else
-        helpers.exec("/etc/init.d/passwall stop")
+        helpers.exec("/etc/init.d/passwall2 stop")
     end
     return true
 end
 
 function M.restart()
-    helpers.exec("/etc/init.d/passwall restart")
+    helpers.exec("/etc/init.d/passwall2 restart")
     return true
 end
 

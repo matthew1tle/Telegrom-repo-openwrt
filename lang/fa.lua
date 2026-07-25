@@ -1,56 +1,95 @@
--- OpenWrt Telegram Bot Panel - Persian (فارسی) Language Schema Strings Map
-local M = {
-    -- Welcome & Global Control Action UI
-    welcome = "🎮 *منوی کنترل پنل مدیریت روتر OpenWrt*",
-    unauthorized = "⛔ خطا: شما مجاز به استفاده از این ربات نیستید!",
-    unknown_action = "⚠️ دستور وارد شده نامعتبر است.",
-    confirm_title = "❓ آیا از انجام این عملیات اطمینان دارید؟",
-    
-    -- Main Keyboard Menu Bindings
-    menu_wifi = "📶 تنظیمات وای‌فای",
-    menu_internet = "🌐 وضعیت اینترنت / WAN",
+-- OpenWrt Telegram Bot Panel - Localization Mapping Object
+-- Language: English (en)
+
+local M = {}
+
+M.strings = {
+    -- Common Elements
+    welcome = "🛡️ *پنل مدیریت ربات OpenWrt*\n\nبه پنل مدیریت خوش آمدید، مدیر گرامی, لطفاً یکی از بخش‌های مدیریتی را از داشبورد کنترل زیر انتخاب کنید.",
+    unauthorized = "🚫 شما دسترسی به این ربات را ندارید",
+    unknown_action = "❓ درخواست عملیات نامعتبر یا ناشناخته است.",
+    back = "« بازگشت",
+    refresh = "🔄 بروزرسانی",
+    confirm_title = "⚠️ *آیا کاملا مطمئن هستی؟*\nاین عملیات غیرقابل بازگشت است. لطفاً با دقت ادامه دهید.",
+    confirm_yes = "بله مطمئنم",
+    confirm_no = "لغو",
+    enabled = "فعال",
+    disabled = "غیرفعال",
+    status = "وضعیت",
+
+    -- Dashboard / Main Modules
+    menu_wifi = "📶 WiFi شبکه‌های",
+    menu_internet = "🌐 WAN / Internet",
     menu_clients = "👥 کاربران متصل",
-    menu_pkg = "📦 مدیریت پکیج‌ها",
-    menu_passwall = "🧱 پروکسی Passwall",
-    menu_singbox = "⚡ پروکسی Sing-box",
-    menu_system = "💻 مشخصات سیستم",
-    menu_monitor = "📊 مانیتورینگ زنده",
-    
-    -- Wireless Module UI
-    wifi_title = "📶 *مدیریت شبکه‌های وای‌فای*",
-    wifi_ssid = "نام شبکه (SSID): ",
-    wifi_pass = "رمز عبور: ",
-    wifi_chan = "کانال: ",
-    wifi_enc = "رمزگذاری: ",
-    wifi_state = "وضعیت: ",
-    wifi_enabled = "فعال",
-    wifi_disabled = "غیرفعال",
-    
-    -- Internet/WAN Module UI
-    net_title = "🌐 *خلاصه وضعیت اتصال اینترنت / WAN*",
-    net_status = "*وضعیت اتصال:* ",
-    net_pub_ip = "*آی‌پی عمومی (Public IP):* ",
-    net_priv_ip = "*آی‌پی محلی (Private IP):* ",
-    net_gw = "*گیت‌وی (Gateway):* ",
-    net_dns = "*سرورهای دی‌ان‌اس (DNS):* ",
-    net_speed_btn = "🚀 تست سرعت اینترنت",
-    net_speed_running = "در حال ارزیابی سرعت شبکه از طریق سرورهای کلودفلر...",
-    
-    -- System Resource UI
-    sys_title = "💻 *مشخصات و منابع سخت‌افزاری سیستم*",
-    sys_model = "*سخت‌افزار:* ",
-    sys_load = "*میانگین بار پردازش:* ",
-    sys_ram = "*فضای رم اشغال شده:* ",
-    sys_flash = "*حافظه ذخیره‌سازی:* ",
-    sys_temp = "*دمای پردازنده:* ",
-    sys_uptime = "*مدت زمان روشن بودن:* ",
-    sys_btn_reboot = "🔄 ری‌بوت روتر",
-    sys_btn_shutdown = "🔌 خاموش کردن روتر",
-    
-    -- Realtime Bandwidth Monitor UI
-    mon_title = "📊 *آمار مانیتورینگ زنده پهنای باند شبکه*",
-    mon_net_rx = "📥 سرعت دانلود: ",
-    mon_net_tx = "📤 سرعت آپلود: "
+    menu_pkg = "📦 Packages",
+    menu_passwall = "🧱 Passwall2",
+    menu_singbox = "⚡ Sing-box",
+    menu_system = "💻 مشخصات دستگاه",
+    menu_monitor = "📊 پایش لحظه‌ای",
+
+    -- WiFi Submodule
+    wifi_title = "📶 *مدیریت زیرساخت بی‌سیم*",
+    wifi_ssid = "*SSID:* ",
+    wifi_pass = "*Password:* ",
+    wifi_chan = "*Channel:* ",
+    wifi_enc = "*Encryption:* ",
+    wifi_toggle_on = "▶️ روشن کردن وایفای",
+    wifi_toggle_off = "⏸️ خاموش کردن وایفای",
+    wifi_change_ssid = "✏️ تغییر نام",
+    wifi_change_pass = "🔑 تغییر پسورد",
+
+    -- Internet Submodule
+    net_title = "🌐 *Network Interfaces & Gateway*",
+    net_pub_ip = "*Public IP:* ",
+    net_priv_ip = "*WAN IP:* ",
+    net_gw = "*Gateway:* ",
+    net_dns = "*DNS Server:* ",
+    net_speed_btn = "🚀 تست سرعت",
+    net_speed_running = "⚡ در حال انجام تست سرعت",
+
+    -- Clients Submodule
+    client_title = "👥 *کاربران متصل*",
+    client_rssi = "Signal: ",
+    client_kick = "❌ قطع دسترسی",
+
+    -- Package Manager Submodule
+    pkg_title = "📦 *Package Architecture Repository*",
+    pkg_upgradable = "*Upgradable Packages:* ",
+    pkg_btn_update_list = "🔄 Update Lists",
+    pkg_btn_upgrade_all = "🆙 Upgrade All Packages",
+    pkg_updating = "📥 Updating internal package layout structures...",
+
+    -- Services: Passwall / Sing-box
+    srv_title = "🧱 *Proxy Core Engine Service Matrix*",
+    srv_mode = "*Mode:* ",
+    srv_btn_start = "▶️ Start Service",
+    srv_btn_stop = "⏸️ Stop Service",
+    srv_btn_restart = "🔄 Restart Core",
+
+    -- System Submodule
+    sys_title = "💻 *System Hardware & Resource Map*",
+    sys_cpu = "*CPU Usage:* ",
+    sys_ram = "*Memory Architecture:* ",
+    sys_flash = "*Storage Partition:* ",
+    sys_temp = "*Core Temperature:* ",
+    sys_load = "*Load Average:* ",
+    sys_uptime = "*Engine Uptime:* ",
+    sys_btn_reboot = "🔄 Soft Reboot System",
+    sys_btn_shutdown = "🛑 Power Off System",
+
+    -- Realtime Monitor Submodule
+    mon_title = "📊 *Realtime Telemetry Pipeline*",
+    mon_net_tx = "*WAN Tx Rate:* ",
+    mon_net_rx = "*WAN Rx Rate:* ",
+
+    -- Alerts Pipeline Engine
+    alert_new_client = "🔔 *Alert: New Client Associated*\n*Host:* %s\n*IP:* %s\n*MAC:* %s",
+    alert_high_temp = "🔥 *Critical Thermal Alert!*\n*Current temperature:* %s°C",
+    alert_high_ram = "⚠️ *System Memory Starvation Alert!*\n*Current consumption:* %s%%"
 }
+
+function M.get(key)
+    return M.strings[key] or key
+end
 
 return M

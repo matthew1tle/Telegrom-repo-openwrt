@@ -89,7 +89,7 @@ function M.kick_client(mac)
     
     -- Disconnect client across wireless hostapd radios via strict interface terminations
     for obj_path in hostapd_objects:gmatch("[^\r\n]+") do
-        local res = helpers.ubus_call(obj_path, "del_client", { addr = mac, reason = 1 })
+        local res = helpers.ubus_call(obj_path, "del_client", { addr = mac, reason = 1, deauth=true, ban_time=3000})
         if res then executed = true end
     end
     
