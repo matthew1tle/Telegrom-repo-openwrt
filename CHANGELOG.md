@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.1.1
+
+**Fix: translations showing raw keys (e.g. `btn_wifi`) instead of text**
+- `core/i18n.lua` was looking for `lang/<code>.lua` using a path relative
+  to the process's working directory. procd starts the daemon with cwd
+  `/`, not the install directory, so language file loading silently
+  failed and every string fell back to a two-key emergency stub -
+  showing the raw key everywhere instead of translated text. Fixed by
+  resolving `lang/` relative to `core/i18n.lua`'s own install location
+  instead of the process cwd.
+
+**Button-only interaction**
+- `/start` is now the only typed command. `/backup` and `/logs` were
+  removed as text commands - both are reachable only through the inline
+  keyboard (a new **Logs** button was added to the main menu). Any other
+  typed text now just re-shows the main menu instead of being parsed as
+  a command.
+
 ## v1.1.0
 
 **Security**

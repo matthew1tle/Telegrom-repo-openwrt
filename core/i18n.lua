@@ -19,7 +19,21 @@ local M = {
     base = {},
 }
 
-local LANG_DIR = "lang"
+-- IMPORTANT: this must NOT be a bare relative path like "lang". procd
+-- starts main.lua with the working directory at "/", not at the install
+-- directory, so a relative path here silently fails to find any lang
+-- file, every string falls back to a two-key emergency stub, and every
+-- button/label ends up showing its raw key (e.g. "btn_wifi") instead of
+-- translated text. Resolve lang/ relative to where THIS file physically
+-- lives instead, so it works no matter what the process's cwd is.
+local function installed_dir()
+    local info = debug.getinfo(1, "S")
+    local source = info.source:match("^@(.+)$") or info.source
+    local dir = source:match("^(.*)[/\\][^/\\]+$")
+    return dir and (dir .. "/..") or "."
+end
+
+local LANG_DIR = installed_dir() .. "/lang"
 
 local function load_lang_file(code)
     local path = string.format("%s/%s.lua", LANG_DIR, code)

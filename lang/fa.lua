@@ -7,7 +7,7 @@ return {
     access_denied = "دسترسی رد شد. شناسه چت شما در لیست مجاز نیست.",
     welcome = "پنل کنترل روتر آماده است. یک گزینه را انتخاب کنید.",
     error_generic = "خطایی رخ داد. برای جزئیات /logs را بررسی کنید.",
-    unknown_command = "دستور نامشخص است.",
+    unknown_command = "لطفاً از دکمه‌های زیر استفاده کنید - فقط /start به‌صورت تایپی کار می‌کند.",
 
     menu_title = "منوی اصلی",
     btn_system = "سیستم",
@@ -16,6 +16,7 @@ return {
     btn_wifi = "وای‌فای",
     btn_packages = "پکیج‌ها",
     btn_backup = "پشتیبان‌گیری / بازیابی",
+    btn_logs = "لاگ‌ها",
     btn_language = "زبان",
     btn_back = "بازگشت",
     btn_refresh = "بروزرسانی",

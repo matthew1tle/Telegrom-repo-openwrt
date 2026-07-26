@@ -44,19 +44,19 @@ end
 
 -- ---------------------------------------------------------------- commands
 
+-- Only /start is a typed command. Every other action (system, network,
+-- clients, wifi, packages, backup/restore, logs, language) is reachable
+-- exclusively through the inline keyboard buttons below - any other typed
+-- text just gets pointed back at the menu instead of being parsed as a
+-- command.
 local function handle_command(chat_id, text)
     local cmd = text:match("^(/%S+)")
     if cmd == "/start" then
         state.clear(chat_id)
         send_main_menu(chat_id)
-    elseif cmd == "/logs" then
-        local logger_mod = require("core.logger")
-        telegram.send_message(chat_id, "<b>" .. i18n.t("logs_title") .. "</b>\n<pre>" .. logger_mod.tail(30) .. "</pre>")
-    elseif cmd == "/backup" then
-        telegram.send_message(chat_id, i18n.t("backup_running"))
-        backup.create(chat_id)
     else
         telegram.send_message(chat_id, i18n.t("unknown_command"))
+        send_main_menu(chat_id)
     end
 end
 
@@ -80,6 +80,10 @@ local function handle_menu(chat_id, message_id, target)
         telegram.edit_message(chat_id, message_id, pkg.render(), keyboards.with_refresh("menu:packages"))
     elseif target == "backup" then
         telegram.edit_message(chat_id, message_id, "<b>" .. i18n.t("backup_title") .. "</b>", keyboards.backup_menu())
+    elseif target == "logs" then
+        local logger_mod = require("core.logger")
+        local text = "<b>" .. i18n.t("logs_title") .. "</b>\n<pre>" .. logger_mod.tail(30) .. "</pre>"
+        telegram.edit_message(chat_id, message_id, text, keyboards.with_refresh("menu:logs"))
     elseif target == "language" then
         telegram.edit_message(chat_id, message_id, "<b>" .. i18n.t("language_title") .. "</b>",
             keyboards.language_menu(i18n.available(), LANGUAGE_NAMES))

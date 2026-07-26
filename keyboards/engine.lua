@@ -22,7 +22,7 @@ function M.main_menu()
             M.row(btn(i18n.t("btn_system"), "menu:system"), btn(i18n.t("btn_network"), "menu:network")),
             M.row(btn(i18n.t("btn_clients"), "menu:clients"), btn(i18n.t("btn_wifi"), "menu:wifi")),
             M.row(btn(i18n.t("btn_packages"), "menu:packages"), btn(i18n.t("btn_backup"), "menu:backup")),
-            M.row(btn(i18n.t("btn_language"), "menu:language")),
+            M.row(btn(i18n.t("btn_logs"), "menu:logs"), btn(i18n.t("btn_language"), "menu:language")),
         },
     }
 end

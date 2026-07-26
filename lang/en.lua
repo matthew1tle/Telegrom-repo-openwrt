@@ -8,7 +8,7 @@ return {
     access_denied = "Access denied. Your chat ID is not on the allow-list.",
     welcome = "OpenWrt control panel ready. Choose an option below.",
     error_generic = "Something went wrong. Check /logs for details.",
-    unknown_command = "Unknown command.",
+    unknown_command = "Please use the buttons below - only /start is a typed command.",
 
     -- main menu
     menu_title = "Main menu",
@@ -18,6 +18,7 @@ return {
     btn_wifi = "Wi-Fi",
     btn_packages = "Packages",
     btn_backup = "Backup / Restore",
+    btn_logs = "Logs",
     btn_language = "Language",
     btn_back = "Back",
     btn_refresh = "Refresh",

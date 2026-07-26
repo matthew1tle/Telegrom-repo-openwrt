@@ -63,6 +63,11 @@ You'll need, from Telegram:
 - Your numeric user ID from **@userinfobot** - this becomes the only chat
   ID allowed to use the bot.
 
+`/start` is the only typed command. Every other action - system status,
+Wi-Fi, clients, packages, backup/restore, logs, language - is done through
+the inline keyboard buttons that `/start` brings up. Typing anything else
+just re-shows the menu.
+
 The installer will also ask for a language and a delivery mode (see
 below), then start the service. Open your bot in Telegram and send
 `/start`.
@@ -95,8 +100,8 @@ partial: any key you don't provide falls back to English automatically.
 
 ## Backup and restore
 
-- `/backup`, or **Backup / Restore → Backup** from the menu, runs
-  `sysupgrade -b` and sends you the archive as a Telegram document.
+- **Backup / Restore → Backup** from the menu runs `sysupgrade -b` and
+  sends you the archive as a Telegram document.
 - **Backup / Restore → Restore**, then send the `.tar.gz` file back to the
   bot. It's checked to make sure it's a real sysupgrade archive before
   `sysupgrade -r` is applied. **A reboot is required** afterwards for all
