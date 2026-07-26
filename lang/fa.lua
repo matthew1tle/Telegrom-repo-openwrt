@@ -1,95 +1,76 @@
--- OpenWrt Telegram Bot Panel - Localization Mapping Object
--- Language: English (en)
+-- lang/fa.lua
+-- Persian translation. Same keys as lang/en.lua - only values differ.
+-- Any key left out here is filled in automatically from English by
+-- core/i18n.lua, so it's safe to translate incrementally.
 
-local M = {}
+return {
+    access_denied = "دسترسی رد شد. شناسه چت شما در لیست مجاز نیست.",
+    welcome = "پنل کنترل روتر آماده است. یک گزینه را انتخاب کنید.",
+    error_generic = "خطایی رخ داد. برای جزئیات /logs را بررسی کنید.",
+    unknown_command = "دستور نامشخص است.",
 
-M.strings = {
-    -- Common Elements
-    welcome = "🛡️ *پنل مدیریت ربات OpenWrt*\n\nبه پنل مدیریت خوش آمدید، مدیر گرامی, لطفاً یکی از بخش‌های مدیریتی را از داشبورد کنترل زیر انتخاب کنید.",
-    unauthorized = "🚫 شما دسترسی به این ربات را ندارید",
-    unknown_action = "❓ درخواست عملیات نامعتبر یا ناشناخته است.",
-    back = "« بازگشت",
-    refresh = "🔄 بروزرسانی",
-    confirm_title = "⚠️ *آیا کاملا مطمئن هستی؟*\nاین عملیات غیرقابل بازگشت است. لطفاً با دقت ادامه دهید.",
-    confirm_yes = "بله مطمئنم",
-    confirm_no = "لغو",
-    enabled = "فعال",
-    disabled = "غیرفعال",
-    status = "وضعیت",
+    menu_title = "منوی اصلی",
+    btn_system = "سیستم",
+    btn_network = "شبکه",
+    btn_clients = "کلاینت‌ها",
+    btn_wifi = "وای‌فای",
+    btn_packages = "پکیج‌ها",
+    btn_backup = "پشتیبان‌گیری / بازیابی",
+    btn_language = "زبان",
+    btn_back = "بازگشت",
+    btn_refresh = "بروزرسانی",
 
-    -- Dashboard / Main Modules
-    menu_wifi = "📶 WiFi شبکه‌های",
-    menu_internet = "🌐 WAN / Internet",
-    menu_clients = "👥 کاربران متصل",
-    menu_pkg = "📦 Packages",
-    menu_passwall = "🧱 Passwall2",
-    menu_singbox = "⚡ Sing-box",
-    menu_system = "💻 مشخصات دستگاه",
-    menu_monitor = "📊 پایش لحظه‌ای",
+    system_title = "وضعیت سیستم",
+    system_cpu = "بار پردازنده: %{value}",
+    system_mem = "حافظه مصرفی: %{used} / %{total} (%{percent}%%)",
+    system_disk = "فضای فلش مصرفی: %{used} / %{total} (%{percent}%%)",
+    system_uptime = "مدت روشن بودن: %{value}",
 
-    -- WiFi Submodule
-    wifi_title = "📶 *مدیریت زیرساخت بی‌سیم*",
-    wifi_ssid = "*SSID:* ",
-    wifi_pass = "*Password:* ",
-    wifi_chan = "*Channel:* ",
-    wifi_enc = "*Encryption:* ",
-    wifi_toggle_on = "▶️ روشن کردن وایفای",
-    wifi_toggle_off = "⏸️ خاموش کردن وایفای",
-    wifi_change_ssid = "✏️ تغییر نام",
-    wifi_change_pass = "🔑 تغییر پسورد",
+    network_title = "شبکه",
+    network_rx = "دریافتی: %{value} در ثانیه",
+    network_tx = "ارسالی: %{value} در ثانیه",
+    internet_ping_ok = "اینترنت متصل است (%{host})، %{ms} میلی‌ثانیه",
+    internet_ping_fail = "اتصال اینترنت برقرار نیست (%{host})",
+    internet_speedtest_running = "در حال انجام تست سرعت سریع...",
+    internet_speedtest_result = "دانلود: تقریباً %{mbps} مگابیت بر ثانیه",
 
-    -- Internet Submodule
-    net_title = "🌐 *Network Interfaces & Gateway*",
-    net_pub_ip = "*Public IP:* ",
-    net_priv_ip = "*WAN IP:* ",
-    net_gw = "*Gateway:* ",
-    net_dns = "*DNS Server:* ",
-    net_speed_btn = "🚀 تست سرعت",
-    net_speed_running = "⚡ در حال انجام تست سرعت",
+    clients_title = "کلاینت‌های متصل",
+    clients_none = "هیچ اجاره DHCP یافت نشد.",
+    clients_kick_done = "%{name} قطع شد.",
+    clients_kick_fail = "قطع کردن %{name} ممکن نشد.",
 
-    -- Clients Submodule
-    client_title = "👥 *کاربران متصل*",
-    client_rssi = "Signal: ",
-    client_kick = "❌ قطع دسترسی",
+    wifi_title = "رادیوهای وای‌فای",
+    wifi_enabled = "%{name}: روشن",
+    wifi_disabled = "%{name}: خاموش",
+    wifi_toggled = "وضعیت %{name} تغییر کرد. در حال بارگذاری مجدد وای‌فای...",
 
-    -- Package Manager Submodule
-    pkg_title = "📦 *Package Architecture Repository*",
-    pkg_upgradable = "*Upgradable Packages:* ",
-    pkg_btn_update_list = "🔄 Update Lists",
-    pkg_btn_upgrade_all = "🆙 Upgrade All Packages",
-    pkg_updating = "📥 Updating internal package layout structures...",
+    packages_title = "پکیج‌ها",
+    packages_installed_count = "%{count} پکیج نصب شده است.",
+    packages_upgrade_available = "%{count} بروزرسانی موجود است.",
+    packages_up_to_date = "سیستم به‌روز است.",
 
-    -- Services: Passwall / Sing-box
-    srv_title = "🧱 *Proxy Core Engine Service Matrix*",
-    srv_mode = "*Mode:* ",
-    srv_btn_start = "▶️ Start Service",
-    srv_btn_stop = "⏸️ Stop Service",
-    srv_btn_restart = "🔄 Restart Core",
+    passwall_status = "Passwall2: %{status}",
+    singbox_status = "sing-box: %{status}",
+    service_toggled = "وضعیت %{name} اکنون %{status} است.",
 
-    -- System Submodule
-    sys_title = "💻 *System Hardware & Resource Map*",
-    sys_cpu = "*CPU Usage:* ",
-    sys_ram = "*Memory Architecture:* ",
-    sys_flash = "*Storage Partition:* ",
-    sys_temp = "*Core Temperature:* ",
-    sys_load = "*Load Average:* ",
-    sys_uptime = "*Engine Uptime:* ",
-    sys_btn_reboot = "🔄 Soft Reboot System",
-    sys_btn_shutdown = "🛑 Power Off System",
+    backup_title = "پشتیبان‌گیری / بازیابی",
+    backup_running = "در حال ساخت فایل پشتیبان از تنظیمات...",
+    backup_done_caption = "پشتیبان تنظیمات روتر - %{date}",
+    backup_failed = "پشتیبان‌گیری ناموفق بود. /logs را بررسی کنید.",
+    restore_prompt = "فایل پشتیبان .tar.gz را برای بازیابی ارسال کنید.",
+    restore_running = "در حال بازیابی تنظیمات...",
+    restore_done = "بازیابی کامل شد. برای اعمال کامل تغییرات، ری‌استارت روتر لازم است.",
+    restore_failed = "بازیابی ناموفق: %{reason}",
+    restore_wrong_file = "این فایل یک پشتیبان معتبر ساخته‌شده توسط این بات نیست.",
 
-    -- Realtime Monitor Submodule
-    mon_title = "📊 *Realtime Telemetry Pipeline*",
-    mon_net_tx = "*WAN Tx Rate:* ",
-    mon_net_rx = "*WAN Rx Rate:* ",
+    language_title = "زبان را انتخاب کنید",
+    language_set = "زبان به %{name} تغییر کرد.",
 
-    -- Alerts Pipeline Engine
-    alert_new_client = "🔔 *Alert: New Client Associated*\n*Host:* %s\n*IP:* %s\n*MAC:* %s",
-    alert_high_temp = "🔥 *Critical Thermal Alert!*\n*Current temperature:* %s°C",
-    alert_high_ram = "⚠️ *System Memory Starvation Alert!*\n*Current consumption:* %s%%"
+    alert_cpu_high = "⚠️ بار پردازنده بالا: %{value}",
+    alert_mem_high = "⚠️ مصرف حافظه بالا: %{percent}%%",
+    alert_disk_high = "⚠️ مصرف فضای فلش بالا: %{percent}%%",
+    alert_wan_down = "🔴 اتصال اینترنت قطع شد (%{host}).",
+    alert_wan_recovered = "🟢 اتصال اینترنت برقرار شد (%{host}).",
+
+    logs_title = "آخرین خطوط لاگ",
 }
-
-function M.get(key)
-    return M.strings[key] or key
-end
-
-return M

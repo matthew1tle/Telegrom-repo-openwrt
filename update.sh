@@ -1,55 +1,73 @@
 #!/bin/sh
-# OpenWrt Telegram Bot Panel - Production Live Updater
-# Strict POSIX compliant BusyBox ash
+# update.sh - pulls the latest release and hot-patches the running install.
+# Backs up the current install first and rolls back automatically if
+# anything in the update fails, so a bad download can't leave the bot dead.
+set -u
 
-set -e
+REPO_ZIP_URL="https://github.com/matthew1tle/Telegrom-repo-openwrt/archive/refs/heads/main.zip"
+INSTALL_DIR=/usr/share/owrt-tg-bot
+CONFIG_DIR=/etc/owrt-tg-bot
+CONFIG_FILE="$CONFIG_DIR/config.conf"
+WORK_DIR=/tmp/owrt-tg-bot-update
+ROLLBACK_ARCHIVE=/tmp/owrt-tg-bot-rollback.tar.gz
 
-BASE_DIR="/usr/share/owrt-tg-bot"
-CONF_DIR="/etc/owrt-tg-bot"
-INIT_DIR="/etc/init.d"
+echo "=================================================="
+echo " Updating OpenWrt Telegram Bot Panel"
+echo "=================================================="
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
-
-log_info() { printf "${GREEN}[INFO]${NC} %s\n" "$1"; }
-log_err()  { printf "${RED}[ERROR]${NC} %s\n" "$1"; exit 1; }
-
-# This script assumes it is executed from an updated directory structure (e.g., pulled from git or unpacked)
-CURRENT_DIR=$(dirname "$(readlink -f "$0")")
-
-if [ ! -d "$BASE_DIR" ] || [ ! -f "$INIT_DIR/owrt-tg-bot" ]; then
-    log_err "Application is not installed. Please run install.sh instead."
+echo "[1/5] Backing up current install for rollback..."
+tar -czf "$ROLLBACK_ARCHIVE" "$INSTALL_DIR" "$CONFIG_FILE" 2>/dev/null
+if [ ! -s "$ROLLBACK_ARCHIVE" ]; then
+    echo "ERROR: could not create rollback backup - aborting update." >&2
+    exit 1
 fi
 
-log_info "Pausing Telegram Bot Panel service during update..."
-"$INIT_DIR/owrt-tg-bot" stop
+rollback() {
+    echo "!! Update failed - rolling back to the previous working install." >&2
+    rm -rf "$INSTALL_DIR"
+    tar -xzf "$ROLLBACK_ARCHIVE" -C /
+    /etc/init.d/owrt-tg-bot restart 2>/dev/null || true
+    exit 1
+}
 
-log_info "Syncing module updates..."
-for folder in core modules keyboards lang plugins; do
-    if [ -d "$CURRENT_DIR/$folder" ]; then
-        mkdir -p "$BASE_DIR/$folder"
-        cp -r "$CURRENT_DIR/$folder/"* "$BASE_DIR/$folder/" 2>/dev/null || true
-    fi
-done
-
-# Ensure operational scripts are refreshed
-if [ -f "$CURRENT_DIR/uninstall.sh" ]; then cp -f "$CURRENT_DIR/uninstall.sh" "$BASE_DIR/uninstall.sh" && chmod 755 "$BASE_DIR/uninstall.sh"; fi
-if [ -f "$CURRENT_DIR/update.sh" ]; then cp -f "$CURRENT_DIR/update.sh" "$BASE_DIR/update.sh" && chmod 755 "$BASE_DIR/update.sh"; fi
-
-# Update init script layout if modified
-if [ -f "$CURRENT_DIR/init.d/owrt-tg-bot" ]; then
-    cp -f "$CURRENT_DIR/init.d/owrt-tg-bot" "$INIT_DIR/owrt-tg-bot"
-    chmod 755 "$INIT_DIR/owrt-tg-bot"
+echo "[2/5] Downloading latest version..."
+rm -rf "$WORK_DIR"
+mkdir -p "$WORK_DIR"
+cd "$WORK_DIR" || rollback
+if ! wget -q -O main.zip "$REPO_ZIP_URL"; then
+    echo "ERROR: download failed." >&2
+    rollback
 fi
 
-# Permissions sanity check
-find "$BASE_DIR" -type f -name "*.lua" -exec chmod 644 {} \;
-find "$BASE_DIR" -type f -name "*.sh" -exec chmod 755 {} \;
+echo "[3/5] Unpacking..."
+if ! unzip -oq main.zip; then
+    echo "ERROR: could not unpack archive." >&2
+    rollback
+fi
+cd Telegrom-repo-openwrt-main 2>/dev/null || rollback
 
-log_info "Restarting updated Telegram Bot Panel engine..."
-"$INIT_DIR/owrt-tg-bot" start
+echo "[4/5] Deploying updated files (config.conf is left untouched)..."
+{
+    cp -r core/* "$INSTALL_DIR"/core/ &&
+    cp -r keyboards/* "$INSTALL_DIR"/keyboards/ &&
+    cp -r lang/* "$INSTALL_DIR"/lang/ &&
+    cp -r modules/* "$INSTALL_DIR"/modules/ &&
+    cp -r scripts/* "$INSTALL_DIR"/scripts/ &&
+    { [ -d plugins ] && cp -r plugins/* "$INSTALL_DIR"/plugins/ || true; } &&
+    cp uninstall.sh "$INSTALL_DIR"/uninstall.sh &&
+    cp update.sh "$INSTALL_DIR"/update.sh &&
+    cp init.d/owrt-tg-bot /etc/init.d/owrt-tg-bot
+} || rollback
 
-log_info "Update applied successfully."
-exit 0
+chmod +x "$INSTALL_DIR"/uninstall.sh "$INSTALL_DIR"/update.sh \
+    "$INSTALL_DIR"/scripts/webhook_cgi.lua /etc/init.d/owrt-tg-bot
+chmod 600 "$CONFIG_FILE"
+
+echo "[5/5] Restarting service..."
+/etc/init.d/owrt-tg-bot restart || rollback
+
+cd / && rm -rf "$WORK_DIR" "$ROLLBACK_ARCHIVE"
+
+echo "=================================================="
+echo " Update complete."
+echo "=================================================="

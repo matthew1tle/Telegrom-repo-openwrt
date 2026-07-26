@@ -1,105 +1,47 @@
--- OpenWrt Telegram Bot Panel - Wireless Network Management Module
--- Interfaces natively with UCI wireless configuration sub-layers
+-- modules/wifi.lua
+-- Lists wireless radios/SSIDs from uci and toggles them on/off.
 
 local helpers = require("core.helpers")
-local lang = require("lang.en")
+local i18n = require("core.i18n")
 
 local M = {}
 
--- Parses and groups active device configurations from UCI structures universally
-function M.get_wifi_networks()
-    local networks = {}
-    
-    -- Fetch the raw wireless config text block cleanly
-    local raw_wifi = helpers.exec("uci show wireless")
-    local sections_found = {}
-    
-    -- Robust match for either named sections (default_radio1) or anonymous indices (@wifi-iface[0])
-    for section in raw_wifi:gmatch("wireless%.([^%.=]+)=wifi%-iface") do
-        if not sections_found[section] then
-            sections_found[section] = true
-            
-            local device = helpers.get_uci_val("wireless", section, "device", "unknown")
-            local ssid = helpers.get_uci_val("wireless", section, "ssid", "Unknown SSID")
-            local key = helpers.get_uci_val("wireless", section, "key", "")
-            local encryption = helpers.get_uci_val("wireless", section, "encryption", "none")
-            local disabled = helpers.get_uci_val("wireless", section, "disabled", "0")
-            
-            -- Get hardware configuration channel value mapping from parent device
-            local channel = helpers.get_uci_val("wireless", device, "channel", "auto")
-            
-            table.insert(networks, {
+function M.list()
+    local out = helpers.shell("uci show wireless 2>/dev/null")
+    local radios = {}
+    local seen = {}
+    for line in out:gmatch("[^\r\n]+") do
+        local section = line:match("^wireless%.([^=]+)=wifi%-iface$")
+        if section and not seen[section] then
+            seen[section] = true
+            local ssid = helpers.trim(helpers.shell(string.format("uci -q get wireless.%s.ssid", section)))
+            local disabled = helpers.trim(helpers.shell(string.format("uci -q get wireless.%s.disabled", section)))
+            radios[#radios + 1] = {
+                name = (ssid ~= "" and ssid) or section,
                 section = section,
-                device = device,
-                ssid = ssid,
-                key = key,
-                encryption = encryption,
-                enabled = (disabled == "0"),
-                channel = channel
-            })
+                disabled = (disabled == "1"),
+            }
         end
     end
-    return networks
+    return radios
 end
 
-function M.get_wifi_summary()
-    local nets = M.get_wifi_networks()
-    local output = lang.get("wifi_title") .. "\n\n"
-    
-    for i, net in ipairs(nets) do
-        local status_icon = net.enabled and "🟢" or "🔴"
-        local status_text = net.enabled and lang.get("enabled") or lang.get("disabled")
-        
-        output = output .. string.format(
-            "%s *Interface %d (%s)*\n" ..
-            "┣ %s`%s`\n" ..
-            "┣ %s`%s`\n" ..
-            "┣ %s`%s`\n" ..
-            "┣ %s`%s`\n" ..
-            "┗ %s`%s`\n\n",
-            status_icon, i, net.device,
-            lang.get("wifi_ssid"), net.ssid,
-            lang.get("wifi_pass"), (net.key ~= "" and net.key or "None"),
-            lang.get("wifi_chan"), net.channel,
-            lang.get("wifi_enc"), net.encryption,
-            lang.get("status"), status_text
-        )
+function M.render()
+    local radios = M.list()
+    local lines = { "<b>" .. i18n.t("wifi_title") .. "</b>", "" }
+    for _, r in ipairs(radios) do
+        lines[#lines + 1] = i18n.t(r.disabled and "wifi_disabled" or "wifi_enabled", { name = r.name })
     end
-    
-    if #nets == 0 then
-        output = output .. "ℹ️ No wireless interfaces found on this device."
-    end
-    return output
+    return table.concat(lines, "\n"), radios
 end
 
-function M.toggle_wifi(section, enable)
-    local val = enable and "0" or "1"
-    local ok = helpers.set_uci_val("wireless", section, "disabled", val)
-    if ok then
-        helpers.exec("uci commit wireless")
-        helpers.exec("/sbin/wifi reload")
-    end
-    return ok
-end
-
-function M.change_ssid(section, new_ssid)
-    if not new_ssid or new_ssid == "" then return false end
-    local ok = helpers.set_uci_val("wireless", section, "ssid", new_ssid)
-    if ok then
-        helpers.exec("uci commit wireless")
-        helpers.exec("/sbin/wifi reload")
-    end
-    return ok
-end
-
-function M.change_password(section, new_password)
-    if not new_password or new_password == "" then return false end
-    local ok = helpers.set_uci_val("wireless", section, "key", new_password)
-    if ok then
-        helpers.exec("uci commit wireless")
-        helpers.exec("/sbin/wifi reload")
-    end
-    return ok
+function M.toggle(section)
+    local disabled = helpers.trim(helpers.shell(string.format("uci get wireless.%s.disabled 2>/dev/null", section)))
+    local new_val = (disabled == "1") and "0" or "1"
+    helpers.shell(string.format("uci set wireless.%s.disabled=%s", section, new_val))
+    helpers.shell("uci commit wireless")
+    helpers.shell("wifi reload >/dev/null 2>&1 &")
+    return true
 end
 
 return M

@@ -1,99 +1,56 @@
--- OpenWrt Telegram Bot Panel - Connected Host Management Module
--- Cross-references DHCP leases against kernel interface arp cache tables
+-- modules/clients.lua
+-- DHCP lease listing and client disconnect ("kick") via hostapd_cli.
 
 local helpers = require("core.helpers")
-local lang = require("lang.en")
+local i18n = require("core.i18n")
 
 local M = {}
 
-function M.get_connected_clients()
+function M.list()
+    local content = helpers.read_file("/tmp/dhcp.leases") or ""
     local clients = {}
-    
-    -- Step 1: Read active network structural leases mapped via DHCP configuration databases
-    local dhcp_leases = {}
-    local dhcp_raw = helpers.read_file("/tmp/dhcp.leases") or ""
-    for line in dhcp_raw:gmatch("[^\r\n]+") do
-        local ts, mac, ip, hostname, clid = line:match("(%d+)%s+([%a%d:]+)%s+(%d+%.%d+%.%d+%.%d+)%s+([^%s]+)%s+([^%s]+)")
+    for line in content:gmatch("[^\r\n]+") do
+        -- format: <expiry> <mac> <ip> <hostname> <clientid>
+        local mac, ip, name = line:match("^%d+%s+(%S+)%s+(%S+)%s+(%S+)")
         if mac then
-            dhcp_leases[mac:lower()] = {
-                ip = ip,
-                hostname = (hostname == "*") and "Unknown" or hostname
-            }
-        end
-    end
-
-    -- Step 2: Fetch RSSI wireless signal indexes using custom dynamic runtime UBUS call blocks
-    local iw_stations = {}
-    local hostapd_objects = helpers.exec("ubus list hostapd.*")
-    for obj_path in hostapd_objects:gmatch("[^\r\n]+") do
-        local status = helpers.ubus_call(obj_path, "get_clients", {})
-        if status and status.clients then
-            for mac, node in pairs(status.clients) do
-                -- Extends structural metrics arrays mapping station signals
-                iw_stations[mac:lower()] = tonumber(node.signal) or -99
-            end
-        end
-    end
-
-    -- Step 3: Parse kernel standard operational ARP mapping frames
-    local arp_raw = helpers.read_file("/proc/net/arp") or ""
-    for line in arp_raw:gmatch("[^\r\n]+") do
-        local ip, mac, dev = line:match("^(%d+%.%d+%.%d+%.%d+)%s+0x%d+%s+0x%d+%s+([%a%d:]+)%s+[^%s]+%s+([^%s]+)")
-        if mac and mac ~= "00:00:00:00:00:00" then
-            mac = mac:lower()
-            local lease = dhcp_leases[mac] or { ip = ip, hostname = "Unknown" }
-            local signal = iw_stations[mac] or nil
-
-            clients[mac] = {
+            clients[#clients + 1] = {
                 mac = mac,
-                ip = lease.ip,
-                hostname = lease.hostname,
-                rssi = signal,
-                interface = dev
+                ip = ip,
+                name = (name ~= "*" and name) or ip,
             }
         end
     end
-
     return clients
 end
 
-function M.get_clients_summary()
-    local clients = M.get_connected_clients()
-    local output = lang.get("client_title") .. "\n\n"
-    
-    local index = 1
-    for mac, client in pairs(clients) do
-        local signal_str = ""
-        if client.rssi then
-            signal_str = string.format(" | %s`%d dBm`", lang.get("client_rssi"), client.rssi)
+function M.render()
+    local clients = M.list()
+    local lines = { "<b>" .. i18n.t("clients_title") .. "</b>", "" }
+    if #clients == 0 then
+        lines[#lines + 1] = i18n.t("clients_none")
+    else
+        for _, c in ipairs(clients) do
+            lines[#lines + 1] = string.format("• %s (%s)", c.name, c.ip)
         end
-
-        output = output .. string.format(
-            "%d. *%s*\n┗ 🌐 `%s` | 🪪 `%s` %s\n",
-            index, client.hostname, client.ip, client.mac:upper(), signal_str
-        )
-        index = index + 1
     end
-
-    if index == 1 then
-        output = output .. "ℹ️ No active clients associated."
-    end
-
-    return output
+    return table.concat(lines, "\n"), clients
 end
 
-function M.kick_client(mac)
-    mac = mac:lower()
-    local hostapd_objects = helpers.exec("ubus list hostapd.*")
-    local executed = false
-    
-    -- Disconnect client across wireless hostapd radios via strict interface terminations
-    for obj_path in hostapd_objects:gmatch("[^\r\n]+") do
-        local res = helpers.ubus_call(obj_path, "del_client", { addr = mac, reason = 1, deauth=true, ban_time=3000})
-        if res then executed = true end
+-- Disconnect a station across every wifi interface that reports it
+-- associated. Works for both hostapd (AP) managed radios.
+function M.kick(mac)
+    local ifaces = helpers.trim(helpers.shell("ubus list hostapd.* 2>/dev/null"))
+    local disconnected = false
+    for iface_path in ifaces:gmatch("[^\r\n]+") do
+        local iface = iface_path:match("^hostapd%.(.+)$")
+        if iface then
+            local _, ok = helpers.shell(
+                string.format("ubus call hostapd.%s del_client \"{'addr':'%s','reason':5,'deauth':true}\"", iface, mac)
+            )
+            if ok then disconnected = true end
+        end
     end
-    
-    return executed
+    return disconnected
 end
 
 return M

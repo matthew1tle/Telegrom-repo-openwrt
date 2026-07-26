@@ -1,49 +1,40 @@
 #!/bin/sh
-# OpenWrt Telegram Bot Panel - Production Uninstaller
-# Strict POSIX compliant BusyBox ash
+# uninstall.sh - removes the OpenWrt Telegram Bot Panel
 
-set -e
+INSTALL_DIR=/usr/share/owrt-tg-bot
+CONFIG_DIR=/etc/owrt-tg-bot
+CGI_LINK=/www/cgi-bin/owrt-tg-bot-webhook
 
-BASE_DIR="/usr/share/owrt-tg-bot"
-CONF_DIR="/etc/owrt-tg-bot"
-INIT_DIR="/etc/init.d"
-LOG_FILE="/var/log/owrt-tg-bot.log"
-STATE_DIR="/var/run/owrt-tg-bot"
+echo "=================================================="
+echo " Uninstalling OpenWrt Telegram Bot Panel"
+echo "=================================================="
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
-
-log_info() { printf "${GREEN}[INFO]${NC} %s\n" "$1"; }
-log_warn() { printf "${YELLOW}[WARN]${NC} %s\n" "$1"; }
-
-log_info "Stopping and disabling Telegram Bot Panel service..."
-if [ -f "$INIT_DIR/owrt-tg-bot" ]; then
-    "$INIT_DIR/owrt-tg-bot" stop 2>/dev/null || true
-    "$INIT_DIR/owrt-tg-bot" disable 2>/dev/null || true
-    rm -f "$INIT_DIR/owrt-tg-bot"
+if [ -f /etc/init.d/owrt-tg-bot ]; then
+    /etc/init.d/owrt-tg-bot stop 2>/dev/null || true
+    /etc/init.d/owrt-tg-bot disable 2>/dev/null || true
+    rm -f /etc/init.d/owrt-tg-bot
 fi
 
-log_info "Removing operational data and runtime components..."
-if [ -d "$BASE_DIR" ]; then
-    rm -rf "$BASE_DIR"
+[ -L "$CGI_LINK" ] && rm -f "$CGI_LINK"
+/etc/init.d/uhttpd reload >/dev/null 2>&1 || true
+
+KEEP_CONFIG="n"
+if [ -t 0 ]; then
+    read -p "Keep config.conf and any backups in $CONFIG_DIR? [y/N]: " ans
+    case "$ans" in
+        y|Y) KEEP_CONFIG="y" ;;
+    esac
 fi
 
-if [ -d "$STATE_DIR" ]; then
-    rm -rf "$STATE_DIR"
-fi
+rm -rf "$INSTALL_DIR"
 
-log_warn "Do you want to delete configuration files and logs? (y/N)"
-read -r answer
-if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
-    log_info "Purging logs and configurations..."
-    rm -rf "$CONF_DIR"
-    rm -f "$LOG_FILE"
+if [ "$KEEP_CONFIG" = "y" ]; then
+    echo "Kept $CONFIG_DIR (remove it manually later if you no longer need it)."
 else
-    log_info "Preserving configuration at: $CONF_DIR"
-    log_info "Preserving logs at: $LOG_FILE"
+    rm -rf "$CONFIG_DIR"
 fi
 
-log_info "Uninstallation complete."
-exit 0
+rm -f /tmp/owrt-tg-bot.offset
+rm -rf /tmp/owrt-tg-bot-backups /tmp/owrt-tg-bot-webhook-queue
+
+echo "Done."

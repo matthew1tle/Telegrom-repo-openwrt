@@ -1,78 +1,80 @@
--- OpenWrt Telegram Bot Panel - Telemetry Alerts Core Plugin Module
--- Watches resource state structures and tracks newly associated station lease tables
+-- plugins/alerts.lua
+-- Background threshold monitor. main.lua calls check() on a timer; this
+-- only sends a Telegram message when a threshold *transitions* between ok
+-- and firing, so a stuck-high CPU doesn't spam the chat every loop.
 
-local helpers = require("core.helpers")
 local telegram = require("core.telegram")
-local lang = require("lang.en")
-local logger = require("core.logger")
-
+local i18n = require("core.i18n")
+local state = require("core.state")
 local system = require("modules.system")
-local clients = require("modules.clients")
+local internet = require("modules.internet")
 
-local M = {}
+local M = {
+    enabled = true,
+    cpu_percent = 90,
+    mem_percent = 90,
+    disk_percent = 90,
+    wan_check_host = "1.1.1.1",
+    check_interval_sec = 60,
+    chat_ids = {},
+}
 
-local thresholds = {}
-local target_chat_ids = {}
-local tracking_state_file = "/var/run/owrt-tg-bot/alert_clients.json"
+function M.init(cfg)
+    local a = cfg.alerts or {}
+    M.enabled = (a.enabled ~= "0")
+    M.cpu_percent = tonumber(a.cpu_percent) or M.cpu_percent
+    M.mem_percent = tonumber(a.mem_percent) or M.mem_percent
+    M.disk_percent = tonumber(a.disk_percent) or M.disk_percent
+    M.wan_check_host = a.wan_check_host or M.wan_check_host
+    M.check_interval_sec = tonumber(a.check_interval_sec) or M.check_interval_sec
 
-function M.init(monitor_config, allowed_chats)
-    thresholds.temp = tonumber(monitor_config.alert_temp_threshold) or 75
-    thresholds.ram  = tonumber(monitor_config.alert_ram_threshold) or 90
-    thresholds.notify_clients = tonumber(monitor_config.alert_notify_new_client) or 1
-
-    for id in string.gmatch(allowed_chats or "", "([^,]+)") do
-        local trimmed = id:gsub("^%s*(.-)%s*$", "%1")
-        if trimmed ~= "" then table.insert(target_chat_ids, trimmed) end
-    end
+    local helpers = require("core.helpers")
+    M.chat_ids = helpers.split_list(cfg.telegram and cfg.telegram.allowed_chat_ids)
 end
 
-local function broadcast_alert(text)
-    for _, chat_id in ipairs(target_chat_ids) do
+local function notify_all(text)
+    for _, chat_id in ipairs(M.chat_ids) do
         telegram.send_message(chat_id, text)
     end
 end
 
-function M.check_thresholds()
-    -- Check Module 1: Thermal Metrics Pipeline
-    local current_temp = system.get_temperature()
-    if current_temp > 0 and current_temp >= thresholds.temp then
-        logger.warn(string.format("Threshold triggered: System temp running high at %.1f C", current_temp))
-        broadcast_alert(string.format(lang.get("alert_high_temp"), tostring(current_temp)))
+-- key transitions from false -> true only when it just started firing;
+-- returns true exactly once per "becomes a problem" edge.
+local function edge(key, firing)
+    local was_firing = state.alert_is_firing(key)
+    state.set_alert_firing(key, firing)
+    return firing and not was_firing, (not firing) and was_firing
+end
+
+function M.check()
+    if not M.enabled then return end
+
+    local snap = system.snapshot()
+
+    local cpu_firing = snap.load1 * 100 >= M.cpu_percent -- load1 as rough proxy, 1.00 ~ 100%
+    local started, _ = edge("cpu", cpu_firing)
+    if started then
+        notify_all(i18n.t("alert_cpu_high", { value = string.format("%.2f", snap.load1) }))
     end
 
-    -- Check Module 2: Memory Starvation Processing
-    local _, _, ram_pct = system.get_ram_info()
-    if ram_pct >= thresholds.ram then
-        logger.warn(string.format("Threshold triggered: System memory usage critical at %.1f%%", ram_pct))
-        broadcast_alert(string.format(lang.get("alert_high_ram"), string.format("%.1f", ram_pct)))
+    local mem_firing = snap.mem_percent >= M.mem_percent
+    started = edge("mem", mem_firing)
+    if started then
+        notify_all(i18n.t("alert_mem_high", { percent = snap.mem_percent }))
     end
 
-    -- Check Module 3: Active Station Client Map Differentiation
-    if thresholds.notify_clients == 1 then
-        local current_clients = clients.get_connected_clients()
-        local raw_historical = helpers.read_file(tracking_state_file)
-        local historical = helpers.json_decode(raw_historical)
+    local disk_firing = snap.disk_percent >= M.disk_percent
+    started = edge("disk", disk_firing)
+    if started then
+        notify_all(i18n.t("alert_disk_high", { percent = snap.disk_percent }))
+    end
 
-        local newly_identified = {}
-        local running_history = {}
-
-        for mac, info in pairs(current_clients) do
-            running_history[mac] = true
-            if not historical[mac] then
-                table.insert(newly_identified, info)
-            end
-        end
-
-        -- Notify structural alert parameters if true mapping variants found
-        if #newly_identified > 0 and next(historical) ~= nil then
-            for _, client in ipairs(newly_identified) do
-                logger.notice(string.format("New client network entry parsed: %s (%s)", client.hostname, client.ip))
-                broadcast_alert(string.format(lang.get("alert_new_client"), client.hostname, client.ip, client.mac:upper()))
-            end
-        end
-
-        -- Save state
-        helpers.write_file(tracking_state_file, helpers.json_encode(running_history))
+    local wan_ok = select(1, internet.ping(M.wan_check_host))
+    local wan_down_started, wan_recovered = edge("wan_down", not wan_ok)
+    if wan_down_started then
+        notify_all(i18n.t("alert_wan_down", { host = M.wan_check_host }))
+    elseif wan_recovered then
+        notify_all(i18n.t("alert_wan_recovered", { host = M.wan_check_host }))
     end
 end
 

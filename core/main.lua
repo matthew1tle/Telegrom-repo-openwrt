@@ -1,78 +1,126 @@
--- OpenWrt Telegram Bot Panel - Main System Process Daemon
--- Orchestrates lifecycle configurations, background monitoring, and polling loops
+#!/usr/bin/env lua
+-- core/main.lua
+-- Daemon entry point, started by init.d/owrt-tg-bot under procd.
+--
+-- Supports two delivery modes, chosen by [telegram].mode in config.conf:
+--   polling  - long-polls Telegram's getUpdates. Works anywhere, no public
+--              IP or TLS needed. Slightly higher idle CPU/network use.
+--   webhook  - Telegram pushes updates to a public https URL. uhttpd runs
+--              scripts/webhook_cgi.lua as a CGI handler that drops each
+--              update as a JSON file into a queue directory; main.lua just
+--              watches that directory. Lower resource use, needs a
+--              reachable HTTPS endpoint (e.g. behind a reverse proxy).
 
-package.path = "/usr/share/owrt-tg-bot/?.lua;" .. package.path
+package.path = package.path .. ";/usr/share/owrt-tg-bot/?.lua"
 
 local helpers = require("core.helpers")
 local logger = require("core.logger")
+local i18n = require("core.i18n")
 local telegram = require("core.telegram")
 local router = require("core.router")
+local alerts = require("plugins.alerts")
 
-local CONF_FILE = "/etc/owrt-tg-bot/config.conf"
+local CONFIG_PATH = "/etc/owrt-tg-bot/config.conf"
+local OFFSET_FILE = "/tmp/owrt-tg-bot.offset"
+local WEBHOOK_QUEUE_DIR = "/tmp/owrt-tg-bot-webhook-queue"
 
-local function main()
-    -- 1. Initialize System Configurations
-    local config = helpers.parse_config(CONF_FILE)
-    if not config.telegram or not config.telegram.bot_token or config.telegram.bot_token == "" then
-        io.stderr:write("CRITICAL: config.conf is missing or telegram bot_token is empty. Terminating daemon.\n")
+local function load_config()
+    local cfg, err = helpers.parse_conf(CONFIG_PATH)
+    if not cfg then
+        io.stderr:write("FATAL: could not read " .. CONFIG_PATH .. ": " .. tostring(err) .. "\n")
         os.exit(1)
     end
+    return cfg
+end
 
-    -- 2. Bind Log Infrastructure
-    local sys_conf = config.system or {}
-    logger.init(sys_conf.log_level or 6, sys_conf.log_file or "/var/log/owrt-tg-bot.log")
-    logger.info("Starting OpenWrt Telegram Management Panel Core Daemon Engine...")
+local function read_offset()
+    local content = helpers.read_file(OFFSET_FILE)
+    return content and tonumber(helpers.trim(content)) or 0
+end
 
-    -- 3. Bootstrap Telegram Network API Wrapper
-    telegram.init(
-        config.telegram.bot_token,
-        config.telegram.allowed_chat_ids,
-        config.telegram.long_polling_timeout or 5
-    )
+local function write_offset(offset)
+    helpers.write_file(OFFSET_FILE, tostring(offset))
+end
 
-    -- 4. Load Background Active Monitors & Event Subscriptions
-    local alert_worker = nil
-    local has_alerts, alerts = pcall(require, "plugins.alerts")
-    if has_alerts then
-        alert_worker = alerts
-        alert_worker.init(config.monitors or {}, config.telegram.allowed_chat_ids)
-        logger.info("Background telemetry alert matrix monitoring hook attached.")
-    else
-        logger.warn("Core background plugins.alerts tracking framework failed to load cleanly.")
-    end
+local function polling_loop()
+    telegram.delete_webhook() -- make sure webhook mode isn't also enabled
+    local offset = read_offset()
+    logger.info("starting in polling mode (offset=" .. offset .. ")")
 
-    local last_update_id = 0
-    local last_monitor_check = os.time()
-    
-    -- 5. Execute Production Polling Control Loop Lifecycle
+    local last_alert_check = 0
     while true do
-        -- Background Hook Execution Path
-        local current_time = os.time()
-        if alert_worker and (current_time - last_monitor_check >= 30) then
-            pcall(alert_worker.check_thresholds)
-            last_monitor_check = current_time
-        end
-
-        -- Poll Inbound Channel Queue Frames Natively
-        local response = telegram.get_updates(last_update_id + 1)
-        if response and response.ok and response.result then
-            for _, update in ipairs(response.result) do
-                last_update_id = math.max(last_update_id, tonumber(update.update_id) or 0)
-                
-                if update.message then
-                    local status, err = pcall(router.handle_message, update.message)
-                    if not status then logger.err("Exception inside message handler pipeline: " .. tostring(err)) end
-                elseif update.callback_query then
-                    local status, err = pcall(router.handle_callback, update.callback_query)
-                    if not status then logger.err("Exception inside callback handler pipeline: " .. tostring(err)) end
-                end
+        local updates = telegram.get_updates(offset, 25)
+        if updates then
+            for _, update in ipairs(updates) do
+                router.dispatch(update)
+                offset = update.update_id + 1
             end
+            if #updates > 0 then write_offset(offset) end
+        else
+            os.execute("sleep 2")
         end
 
-        -- Memory Cleanup Cycle (Prevents execution pool bloat over extended execution windows)
-        collectgarbage("step", 10)
+        if os.time() - last_alert_check >= alerts.check_interval_sec then
+            alerts.check()
+            last_alert_check = os.time()
+        end
     end
 end
 
--- Force execution runtime sequence containment
+local function webhook_loop(webhook_url)
+    helpers.shell("mkdir -p " .. WEBHOOK_QUEUE_DIR)
+    telegram.set_webhook(webhook_url)
+    logger.info("starting in webhook mode (" .. webhook_url .. ")")
+
+    local last_alert_check = 0
+    while true do
+        local listing = helpers.shell("ls " .. WEBHOOK_QUEUE_DIR .. " 2>/dev/null")
+        for filename in listing:gmatch("[^\r\n]+") do
+            local path = WEBHOOK_QUEUE_DIR .. "/" .. filename
+            local content = helpers.read_file(path)
+            os.remove(path)
+            if content then
+                local update = helpers.json_decode(content)
+                if update then router.dispatch(update) end
+            end
+        end
+
+        os.execute("sleep 1")
+
+        if os.time() - last_alert_check >= alerts.check_interval_sec then
+            alerts.check()
+            last_alert_check = os.time()
+        end
+    end
+end
+
+local function main()
+    local cfg = load_config()
+
+    logger.init(cfg)
+    i18n.load(cfg.general and cfg.general.language or "en")
+    router.init(cfg)
+    alerts.init(cfg)
+
+    local token = cfg.telegram and cfg.telegram.bot_token
+    if not token or token == "" then
+        logger.error("bot_token missing from config.conf - aborting")
+        os.exit(1)
+    end
+    telegram.init(token)
+
+    local mode = (cfg.telegram and cfg.telegram.mode) or "polling"
+    if mode == "webhook" then
+        local url = cfg.telegram.webhook_url
+        if not url or url == "" then
+            logger.error("mode=webhook but webhook_url is empty - falling back to polling")
+            polling_loop()
+        else
+            webhook_loop(url)
+        end
+    else
+        polling_loop()
+    end
+end
+
 main()

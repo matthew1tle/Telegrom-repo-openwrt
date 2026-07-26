@@ -1,120 +1,126 @@
--- OpenWrt Telegram Bot Panel - Global System Helper Matrix
--- Production Ready, Safe Executions, JSON Parsing wrappers
+-- core/helpers.lua
+-- Small utility layer shared by every module: shell execution, the custom
+-- INI-style config parser, JSON encode/decode wrappers and string helpers.
+-- Kept dependency-free (besides lua-cjson) so it runs on the stock OpenWrt
+-- Lua runtime with no extra rocks/modules.
+
+local ok_cjson, cjson = pcall(require, "cjson")
+if not ok_cjson then
+    cjson = pcall(require, "cjson.safe") and require("cjson.safe") or nil
+end
 
 local M = {}
 
-local cjson = require("cjson")
-local uci = require("uci")
-local ubus = require("ubus")
+function M.trim(s)
+    if not s then return "" end
+    return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
 
--- File operations helpers
+-- Run a shell command and return (stdout, ok, exit_code)
+function M.shell(cmd)
+    local handle = io.popen(cmd .. " 2>/dev/null")
+    if not handle then return "", false, -1 end
+    local out = handle:read("*a") or ""
+    local ok, _, code = handle:close()
+    return out, ok and true or false, code or 0
+end
+
 function M.read_file(path)
     local f = io.open(path, "r")
     if not f then return nil end
-    local content = f:read("*all")
+    local content = f:read("*a")
     f:close()
-    -- Trim whitespace
-    return content:gsub("^%s*(.-)%s*$", "%1")
+    return content
 end
 
-function M.write_file(path, content)
-    local f = io.open(path, "w")
+function M.write_file(path, content, mode)
+    local f = io.open(path, mode or "w")
     if not f then return false end
     f:write(content)
     f:close()
     return true
 end
 
--- INI/Config parser specifically optimized for config.conf structure
-function M.parse_config(path)
-    local config = {}
-    local current_section = nil
-    
+function M.file_exists(path)
     local f = io.open(path, "r")
-    if not f then return config end
-    
-    for line in f:lines() do
-        line = line:gsub("^%s*(.-)%s*$", "%1") -- trim
-        if line ~= "" and not line:match("^#") and not line:match("^;") then
-            local section = line:match("^%[(.-)%]")
-            if section then
-                current_section = section
-                config[current_section] = config[current_section] or {}
-            elseif current_section and line:match("=") then
-                local key, val = line:match("^([^=]+)=(.*)$")
-                if key and val then
-                    key = key:gsub("^%s*(.-)%s*$", "%1")
-                    val = val:gsub("^%s*(.-)%s*$", "%1")
-                    -- Strip quotes
-                    val = val:gsub("^\"(.-)\"$", "%1")
-                    config[current_section][key] = val
+    if f then f:close(); return true end
+    return false
+end
+
+-- JSON --------------------------------------------------------------------
+
+function M.json_encode(tbl)
+    if not cjson then return nil, "lua-cjson not available" end
+    local ok, res = pcall(cjson.encode, tbl)
+    if not ok then return nil, res end
+    return res
+end
+
+function M.json_decode(str)
+    if not cjson then return nil, "lua-cjson not available" end
+    if not str or str == "" then return nil, "empty body" end
+    local ok, res = pcall(cjson.decode, str)
+    if not ok then return nil, res end
+    return res
+end
+
+-- INI-style config parser ---------------------------------------------------
+-- Parses files shaped like:
+--   [section]
+--   key="value"
+--   key=value
+-- Returns a nested table: cfg.section.key = "value"
+
+function M.parse_conf(path)
+    local content = M.read_file(path)
+    if not content then return nil, "cannot read " .. tostring(path) end
+
+    local cfg = {}
+    local section = nil
+
+    for line in content:gmatch("[^\r\n]+") do
+        local trimmed = M.trim(line)
+        if trimmed ~= "" and trimmed:sub(1, 1) ~= ";" and trimmed:sub(1, 1) ~= "#" then
+            local sec = trimmed:match("^%[([%w_.-]+)%]$")
+            if sec then
+                section = sec
+                cfg[section] = cfg[section] or {}
+            else
+                local key, val = trimmed:match("^([%w_.-]+)%s*=%s*(.*)$")
+                if key and section then
+                    val = M.trim(val)
+                    -- strip a single pair of matching quotes
+                    val = val:gsub('^"(.*)"$', "%1")
+                    val = val:gsub("^'(.*)'$", "%1")
+                    cfg[section][key] = val
                 end
             end
         end
     end
-    f:close()
-    return config
+
+    return cfg
 end
 
--- Safe execution mapping via io.popen
-function M.exec(cmd)
-    local f = io.popen(cmd .. " 2>/dev/null")
-    if not f then return "" end
-    local res = f:read("*all")
-    f:close()
-    return res:gsub("^%s*(.-)%s*$", "%1")
-end
-
--- UCI Interface Abstraction Layer
-function M.get_uci_val(package, section, option, default)
-    local cursor = uci.cursor()
-    local val = cursor:get(package, section, option)
-    if val == nil then return default end
-    return val
-end
-
-function M.set_uci_val(package, section, option, value)
-    local cursor = uci.cursor()
-    local ok = cursor:set(package, section, option, value)
-    if ok then cursor:commit(package) end
-    return ok
-end
-
--- UBUS Request Bus Implementation
-function M.ubus_call(object, method, params)
-    local conn = ubus.connect()
-    if not conn then return nil end
-    local res = conn:call(object, method, params or {})
-    conn:close()
-    return res
-end
-
--- Safe JSON encoders/decoders
-function M.json_encode(data)
-    local status, res = pcall(cjson.encode, data)
-    if status then return res end
-    return "{}"
-end
-
-function M.json_decode(str)
-    if not str or str == "" then return {} end
-    local status, res = pcall(cjson.decode, str)
-    if status then return res end
-    return {}
-end
-
--- String formatting for raw byte sizes
-function M.format_bytes(bytes)
-    bytes = tonumber(bytes) or 0
-    if bytes >= 1073741824 then
-        return string.format("%.2f GB", bytes / 1073741824)
-    elseif bytes >= 1048576 then
-        return string.format("%.2f MB", bytes / 1048576)
-    elseif bytes >= 1024 then
-        return string.format("%.2f KB", bytes / 1024)
-    else
-        return bytes .. " B"
+-- Split a comma-separated list into a trimmed array, e.g. allowed_chat_ids
+function M.split_list(str)
+    local out = {}
+    if not str then return out end
+    for item in str:gmatch("[^,]+") do
+        local trimmed = M.trim(item)
+        if trimmed ~= "" then out[#out + 1] = trimmed end
     end
+    return out
+end
+
+function M.in_list(list, value)
+    for _, v in ipairs(list) do
+        if tostring(v) == tostring(value) then return true end
+    end
+    return false
+end
+
+function M.now()
+    return os.date("%Y-%m-%d %H:%M:%S")
 end
 
 return M
