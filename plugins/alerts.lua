@@ -14,6 +14,7 @@ local M = {
     cpu_percent = 90,
     mem_percent = 90,
     disk_percent = 90,
+    temp_celsius = 80,
     wan_check_host = "1.1.1.1",
     check_interval_sec = 60,
     chat_ids = {},
@@ -25,6 +26,7 @@ function M.init(cfg)
     M.cpu_percent = tonumber(a.cpu_percent) or M.cpu_percent
     M.mem_percent = tonumber(a.mem_percent) or M.mem_percent
     M.disk_percent = tonumber(a.disk_percent) or M.disk_percent
+    M.temp_celsius = tonumber(a.temp_celsius) or M.temp_celsius
     M.wan_check_host = a.wan_check_host or M.wan_check_host
     M.check_interval_sec = tonumber(a.check_interval_sec) or M.check_interval_sec
 
@@ -67,6 +69,14 @@ function M.check()
     started = edge("disk", disk_firing)
     if started then
         notify_all(i18n.t("alert_disk_high", { percent = snap.disk_percent }))
+    end
+
+    if snap.cpu_temp then
+        local temp_firing = snap.cpu_temp >= M.temp_celsius
+        started = edge("temp", temp_firing)
+        if started then
+            notify_all(i18n.t("alert_temp_high", { value = string.format("%.1f", snap.cpu_temp) }))
+        end
     end
 
     local wan_ok = select(1, internet.ping(M.wan_check_host))

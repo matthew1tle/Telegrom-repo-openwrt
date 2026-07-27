@@ -107,7 +107,8 @@ local function main()
         logger.error("bot_token missing from config.conf - aborting")
         os.exit(1)
     end
-    telegram.init(token)
+    local platform = (cfg.telegram and cfg.telegram.platform) or "telegram"
+    telegram.init(token, platform)
 
     local mode = (cfg.telegram and cfg.telegram.mode) or "polling"
     if mode == "webhook" then

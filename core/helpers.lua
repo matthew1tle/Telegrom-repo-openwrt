@@ -119,6 +119,20 @@ function M.in_list(list, value)
     return false
 end
 
+-- Shell-quote a string for safe use as a single argument in sh. Anything
+-- coming from uci output (like @wifi-iface[0]) or a MAC address must go
+-- through this before it's interpolated into a shell command - unquoted,
+-- "[0]" is a glob character class to the shell and silently breaks the
+-- command instead of raising a visible error.
+function M.shq(s)
+    return "'" .. tostring(s):gsub("'", "'\\''") .. "'"
+end
+
+function M.shell_exists(bin)
+    local _, ok = M.shell("command -v " .. M.shq(bin))
+    return ok
+end
+
 function M.now()
     return os.date("%Y-%m-%d %H:%M:%S")
 end

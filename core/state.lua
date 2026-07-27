@@ -31,6 +31,17 @@ function M.set_awaiting(chat_id, what)
     M.set(chat_id, "awaiting", what)
 end
 
+-- The message_id of the menu currently shown to this chat. Text replies
+-- (e.g. typing a new SSID) edit this message instead of sending a new
+-- one, so the chat doesn't fill up with one-off confirmation messages.
+function M.set_menu_message(chat_id, message_id)
+    M.set(chat_id, "menu_message_id", message_id)
+end
+
+function M.get_menu_message(chat_id)
+    return M.get(chat_id).menu_message_id
+end
+
 -- Alert de-duplication: alerts.lua uses this so it only sends a message
 -- when a threshold transitions from "ok" to "firing", not on every loop.
 function M.alert_is_firing(key)

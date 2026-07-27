@@ -58,10 +58,14 @@ chmod +x install.sh
 ./install.sh
 ```
 
-You'll need, from Telegram:
-- A bot token from **@BotFather** (`/newbot`).
-- Your numeric user ID from **@userinfobot** - this becomes the only chat
-  ID allowed to use the bot.
+The installer asks which platform you're setting up:
+- **Telegram** (default) - get a token from **@BotFather** and your
+  numeric user ID from **@userinfobot**.
+- **Bale (بله)** - Bale's Bot API mirrors Telegram's, so the same bot
+  works there too; get a token and user ID the same way through Bale.
+
+You can run separate installs (different `config.conf`/service) if you
+want the bot on both platforms at once.
 
 `/start` is the only typed command. Every other action - system status,
 Wi-Fi, clients, packages, backup/restore, logs, language - is done through
@@ -69,8 +73,7 @@ the inline keyboard buttons that `/start` brings up. Typing anything else
 just re-shows the menu.
 
 The installer will also ask for a language and a delivery mode (see
-below), then start the service. Open your bot in Telegram and send
-`/start`.
+below), then start the service. Open your bot and send `/start`.
 
 ## Delivery modes: polling vs. webhook
 
@@ -98,6 +101,23 @@ function - nothing is hardcoded per-file. To add a language:
 That's it - no other file needs editing. A translation can also be
 partial: any key you don't provide falls back to English automatically.
 
+## Network
+
+The **Network** view shows live RX/TX rate, WAN ping status, and your
+public IP. The **Speed test** button uses `librespeed-cli` if it's
+installed (the installer tries to install it automatically) for a real
+download/upload/ping reading, or falls back to a rough timed-download
+estimate otherwise.
+
+## Wi-Fi and clients
+
+- **Wi-Fi**: tapping a radio opens a detail view to turn it on/off,
+  change the SSID, or change the password (type the new value when
+  prompted, or hit Cancel).
+- **Clients**: tapping a connected client lets you cut its access for
+  5 minutes, 30 minutes, or 1 hour (a firewall rule that's removed
+  automatically when the timer ends), or unblock it early.
+
 ## Backup and restore
 
 - **Backup / Restore → Backup** from the menu runs `sysupgrade -b` and
@@ -120,6 +140,7 @@ enabled="1"
 cpu_percent="90"
 mem_percent="90"
 disk_percent="90"
+temp_celsius="80"
 check_interval_sec="60"
 wan_check_host="1.1.1.1"
 ```

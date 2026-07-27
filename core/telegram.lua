@@ -2,18 +2,32 @@
 -- Talks to the Telegram Bot API over POSIX curl, since that's already a
 -- dependency (installed by install.sh) and avoids pulling in a full HTTP
 -- client library just for JSON POSTs.
+--
+-- Also supports Bale (بله), the Iranian messaging app whose Bot API
+-- mirrors Telegram's method names and JSON shapes at a different host -
+-- switching platform is just a base_url change, everything else in this
+-- file (and the rest of the bot) is unaffected. Bale doesn't support
+-- every Telegram feature (e.g. HTML parse_mode support has historically
+-- been inconsistent) - if formatting looks off on Bale, that's most
+-- likely why.
 
 local helpers = require("core.helpers")
 local logger = require("core.logger")
+
+local PLATFORM_HOSTS = {
+    telegram = { api = "https://api.telegram.org", file = "https://api.telegram.org/file" },
+    bale = { api = "https://tapi.bale.ai", file = "https://tapi.bale.ai/file" },
+}
 
 local M = {
     base_url = nil,
     file_base_url = nil,
 }
 
-function M.init(bot_token)
-    M.base_url = "https://api.telegram.org/bot" .. bot_token
-    M.file_base_url = "https://api.telegram.org/file/bot" .. bot_token
+function M.init(bot_token, platform)
+    local hosts = PLATFORM_HOSTS[platform] or PLATFORM_HOSTS.telegram
+    M.base_url = hosts.api .. "/bot" .. bot_token
+    M.file_base_url = hosts.file .. "/bot" .. bot_token
 end
 
 -- Shell-quote a string for safe use inside single quotes in sh.

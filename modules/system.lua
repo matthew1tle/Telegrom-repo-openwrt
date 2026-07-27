@@ -56,22 +56,51 @@ local function kb_to_human(kb)
     return string.format("%d KB", kb)
 end
 
+-- Different SoCs expose the thermal zone at different indices/paths, so
+-- try a short list of common ones instead of assuming thermal_zone0 is
+-- always the CPU.
+local THERMAL_PATHS = {
+    "/sys/class/thermal/thermal_zone0/temp",
+    "/sys/class/thermal/thermal_zone1/temp",
+    "/sys/devices/virtual/thermal/thermal_zone0/temp",
+}
+
+local function cpu_temp_c()
+    for _, path in ipairs(THERMAL_PATHS) do
+        local content = helpers.read_file(path)
+        if content then
+            local raw = tonumber(helpers.trim(content))
+            if raw then
+                -- Kernel reports millidegrees C on most platforms (e.g.
+                -- 45000 = 45.0°C); a handful report whole degrees already.
+                local celsius = raw > 1000 and (raw / 1000) or raw
+                return celsius
+            end
+        end
+    end
+    return nil
+end
+
 function M.render()
     local mem_used, mem_total, mem_pct = memory()
     local disk_used, disk_total, disk_pct = disk()
+    local temp = cpu_temp_c()
 
     local lines = {
         "<b>" .. i18n.t("system_title") .. "</b>",
         "",
         i18n.t("system_cpu", { value = load_average() }),
-        i18n.t("system_mem", {
-            used = kb_to_human(mem_used), total = kb_to_human(mem_total), percent = mem_pct,
-        }),
-        i18n.t("system_disk", {
-            used = kb_to_human(disk_used), total = kb_to_human(disk_total), percent = disk_pct,
-        }),
-        i18n.t("system_uptime", { value = uptime() }),
     }
+    if temp then
+        lines[#lines + 1] = i18n.t("system_temp", { value = string.format("%.1f", temp) })
+    end
+    lines[#lines + 1] = i18n.t("system_mem", {
+        used = kb_to_human(mem_used), total = kb_to_human(mem_total), percent = mem_pct,
+    })
+    lines[#lines + 1] = i18n.t("system_disk", {
+        used = kb_to_human(disk_used), total = kb_to_human(disk_total), percent = disk_pct,
+    })
+    lines[#lines + 1] = i18n.t("system_uptime", { value = uptime() })
     return table.concat(lines, "\n")
 end
 
@@ -83,6 +112,7 @@ function M.snapshot()
         mem_percent = mem_pct,
         disk_percent = disk_pct,
         load1 = tonumber((helpers.read_file("/proc/loadavg") or "0"):match("^([%d%.]+)")) or 0,
+        cpu_temp = cpu_temp_c(),
     }
 end
 

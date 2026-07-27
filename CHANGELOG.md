@@ -1,5 +1,65 @@
 # Changelog
 
+## v1.1.3
+
+**Network: public IP + real speed test**
+- The Network view now also shows your public IP (tried across a couple
+  of IP-echo services in case one is unreachable).
+- New **Speed test** button. Uses `librespeed-cli` (installed by
+  `install.sh` when available - it's a small static binary, a much
+  better fit for a router than the Python-based `speedtest-cli`) for a
+  real download/upload/ping/server reading. Falls back to the previous
+  timed-download estimate if neither client is installed.
+
+**Bale (بله) support**
+- `config.conf` now has a `platform="telegram"|"bale"` setting. Bale's
+  Bot API mirrors Telegram's method names and JSON shapes at a different
+  host, so this is a one-line switch - nothing else in the bot needs to
+  change. `install.sh` asks which platform to set up.
+
+## v1.1.2
+
+**Fix: Wi-Fi toggle did nothing**
+- uci section names like `@wifi-iface[0]` were being interpolated
+  unquoted into shell commands. `[0]` is a shell glob character class, so
+  `uci set`/`uci get` calls on wireless sections silently misbehaved -
+  the bot reported "toggled" regardless of whether anything actually
+  changed. Every section/MAC/etc. that touches a shell command now goes
+  through a shared `helpers.shq()` quoting helper.
+
+**Wi-Fi: proper on/off + rename + password**
+- Tapping a radio now opens a detail view (name, status) with buttons to
+  turn it on/off, rename the SSID, or change the password - instead of
+  toggling blind on tap. The radio never disappears from the list; its
+  status indicator just updates.
+
+**Clients: real timed blocking**
+- The old "kick" only sent a one-off Wi-Fi deauth, so the device just
+  reconnected seconds later - access was never actually cut off. Tapping
+  a client now opens a duration picker (5 min / 30 min / 1 hour). Chosen
+  duration adds a firewall rule dropping that MAC's traffic, which is
+  automatically removed when the timer runs out - plus a manual "unblock
+  now" option.
+
+**Packages: plain-text update list**
+- New **Update list** button sends the names of every package with an
+  update available as its own message, instead of only showing a count.
+
+**Less chat clutter**
+- Confirmations for button presses (toggle, block, rename, language
+  change, etc.) now show as a small popup instead of a separate chat
+  message. The menu is a single message that gets edited in place, so it
+  doesn't get pushed around or duplicated by follow-up notifications.
+
+**System: CPU temperature**
+- Added to the System view (when the board exposes a thermal zone) and
+  to the alert thresholds (`temp_celsius` in `config.conf`).
+
+**Emoji throughout**
+- Every button label and bot message now carries an emoji, all defined
+  in the language files (`lang/en.lua`, `lang/fa.lua`) rather than
+  hardcoded per-module, so translations stay in one place.
+
 ## v1.1.1
 
 **Fix: translations showing raw keys (e.g. `btn_wifi`) instead of text**
